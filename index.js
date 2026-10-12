@@ -1,8 +1,8 @@
 const fs=require('node:fs');
 const path=require('node:path');
-const {Client,GatewayIntentBits,Partials,REST,Routes}=require('discord.js');
+const {Client,GatewayIntentBits,Partials,REST}=require('discord.js');
 const config=require('./src/config');
-const commands=require('./src/commands');
+const {registerCommands}=require('./src/register-commands');
 const {Store}=require('./src/store');
 const App=require('./src/app');
 const {Invoices}=require('./src/invoices');
@@ -26,17 +26,20 @@ async function main(){
   process.on('exit',()=>{try{if(fs.readFileSync(lock,'utf8')===String(process.pid))fs.unlinkSync(lock);}catch{}});
   const store=new Store(config.dataDir);
   const invoices=new Invoices(store,config);
+  let notificationScheduled=false;
+  invoices.onNotificationQueued=()=>{if(notificationScheduled)return;notificationScheduled=true;setImmediate(()=>{notificationScheduled=false;invoices.notifications().catch(()=>{});});};
   const server=createCheckoutServer(invoices,config);
   await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(config.checkout.port,'0.0.0.0',resolve);});
   process.stdout.write(`Checkout listening on port ${config.checkout.port}\n`);
-  const notificationTimer=setInterval(()=>invoices.notifications(),10000);
+  const notificationTimer=setInterval(()=>invoices.notifications().catch(()=>{}),10000);
   if(config.webOnly){const close=()=>{clearInterval(notificationTimer);server.close(()=>process.exit(0));};process.once('SIGINT',close);process.once('SIGTERM',close);return;}
   const client=new Client({intents:[GatewayIntentBits.Guilds,GatewayIntentBits.GuildMembers,GatewayIntentBits.GuildPresences,GatewayIntentBits.GuildMessages,GatewayIntentBits.DirectMessages],partials:[Partials.Channel],allowedMentions:{parse:[]}});
   const app=new App(client,store,config);
   app.invoices=invoices;
-  client.once('ready',()=>app.start());
+  invoices.sendCustomer=async(userId,payload)=>{if(!client.isReady())throw new Error('Discord client not ready');const user=await client.users.fetch(userId);return user.send(payload);};
+  client.once('ready',()=>{app.start();invoices.onNotificationQueued();});
   startupStage='command-registration';
-  await new REST({version:'10'}).setToken(config.token).put(Routes.applicationGuildCommands(config.clientId,config.guildId),{body:commands.map(c=>c.toJSON())});
+  await registerCommands(new REST({version:'10'}).setToken(config.token),config.clientId,config.guildId);
   startupStage='discord-login';
   await client.login(config.token);
   const shutdown=()=>{clearInterval(notificationTimer);server.close();app.stop();client.destroy();store.save();process.exit(0);};

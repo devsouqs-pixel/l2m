@@ -7,8 +7,8 @@ const cmd=(name,description,staff=true)=>{
 const user=(c,required=true)=>c.addUserOption(o=>o.setName('user').setDescription('العضو').setRequired(required));
 const channel=c=>c.addChannelOption(o=>o.setName('channel').setDescription('الروم').addChannelTypes(ChannelType.GuildText));
 module.exports=[
-  cmd('invoice-confirm','اعتماد حوالة CliQ بعد التأكد من وصولها بالبنك').addStringOption(o=>o.setName('invoice').setDescription('رقم الفاتورة L2M-...').setRequired(true).setMaxLength(40)).addStringOption(o=>o.setName('amount').setDescription('المبلغ المستلم بالدينار، مثل 7.090').setRequired(true).setMaxLength(15)).addStringOption(o=>o.setName('reference').setDescription('مرجع الحوالة المستلمة من سجل البنك').setRequired(true).setMaxLength(80)),
-  cmd('invoice','إنشاء فاتورة دفع برابط خاص').addStringOption(o=>o.setName('amount').setDescription('المبلغ الأساسي بالدولار، مثل 10 أو 10.50').setRequired(true).setMaxLength(12)).addUserOption(o=>o.setName('user').setDescription('العميل')).addStringOption(o=>o.setName('name').setDescription('اسم الفاتورة أو المنتج').setMaxLength(120)),
+  cmd('invoice-confirm','تأكيد حوالة CliQ أو إلغاء الفاتورة بعد مراجعة البنك').addStringOption(o=>o.setName('invoice').setDescription('رقم الفاتورة L2M-...').setRequired(true).setMaxLength(40)).addStringOption(o=>o.setName('action').setDescription('تأكيد وصول الحوالة أو إلغاء الفاتورة').setRequired(true).addChoices({name:'تأكيد وصول الحوالة',value:'confirm'},{name:'إلغاء الفاتورة',value:'cancel'})),
+  cmd('invoice','إنشاء فاتورة دفع برابط خاص وتحديثات للعميل').addStringOption(o=>o.setName('amount').setDescription('المبلغ الأساسي بالدولار، مثل 10 أو 10.50').setRequired(true).setMaxLength(12)).addUserOption(o=>o.setName('user').setDescription('العميل الذي تصله تحديثات الفاتورة').setRequired(true)).addStringOption(o=>o.setName('name').setDescription('اسم الفاتورة أو المنتج').setMaxLength(120)),
   channel(user(cmd('message','إنشاء إيمبد متعدد الأقسام مع معاينة قبل النشر'),false)),
   user(cmd('dm','إرسال رسالة خاصة من البوت')),
   cmd('broadcast','إرسال برودكاست بعد اختيار الجمهور والمعاينة'),

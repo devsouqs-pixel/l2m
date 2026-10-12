@@ -20,7 +20,7 @@ export async function downloadReceipt(invoice,settings,{demo=false}={}){
   line(708);text('رقم الطلب والفاتورة',1110,758,23,'#71877e');text(invoice.id,120,758,28,'#1b342a','left',600);
   const formatted=value=>new Intl.DateTimeFormat('ar-JO',{dateStyle:'long',timeStyle:'short',timeZone:'Asia/Amman'}).format(new Date(value));
   text('تاريخ الإصدار',1110,824,23,'#71877e');text(formatted(invoice.createdAt),120,824,24,'#1b342a','left');text('تاريخ الدفع · بتوقيت الأردن',1110,890,23,'#71877e');text(formatted(invoice.paidAt||Date.now()),120,890,24,'#1b342a','left');
-  text('وسيلة الدفع',1110,956,23,'#71877e');text(cliq?'CliQ · '+invoice.cliq.bank:'PayPal · دفع إلكتروني',120,956,26,'#1b342a','left',600);
+  text('وسيلة الدفع',1110,956,23,'#71877e');text(cliq?'CliQ · '+invoice.cliq.bank:invoice.paymentMethod==='CARD'?'بطاقة بنكية · Visa / Mastercard':invoice.paymentMethod==='APPLE_PAY'?'Apple Pay · عبر PayPal':'PayPal · دفع إلكتروني',120,956,26,'#1b342a','left',600);
   text('مرجع العملية',1110,1022,23,'#71877e');wrap(invoice.paymentReference||invoice.captureId||(demo?'DEMO-TRANSACTION':'—'),120,1022,740,23,'#1b342a','left',2);
   line(1102);text('قيمة الطلب الأساسية',1110,1158,25,'#536b61');text((invoice.baseCents/100).toFixed(2)+' USD',120,1158,29,'#1b342a','left',600);text(invoice.feeLabel||'رسوم الخدمة',1110,1227,25,'#536b61');text(cliq?'0.000 JOD':(invoice.feeCents/100).toFixed(2)+' USD',120,1227,29,'#1b342a','left',600);
   if(cliq){text('سعر التحويل المعتمد لهذه الفاتورة',1110,1295,21,'#71877e');text('1 USD = '+Number(invoice.cliq.rate).toFixed(3)+' JOD',120,1295,24,'#1b342a','left');}

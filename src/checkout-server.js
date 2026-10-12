@@ -18,7 +18,7 @@ function createCheckoutServer(service,config){
         const key=request.socket.remoteAddress||'unknown',now=Date.now();let bucket=limits.get(key);
         if(!bucket||now>bucket.reset){bucket={count:0,reset:now+60000};limits.set(key,bucket);}if(++bucket.count>90)return send(response,429,{error:'طلبات كثيرة. انتظر قليلًا.'});
         if(limits.size>10000)for(const [key,value]of limits)if(value.reset<now)limits.delete(key);
-        const match=url.pathname.match(/^\/api\/invoices\/([A-Za-z0-9_-]{32})(?:\/(order|capture|refresh|cliq-claim))?$/);
+        const match=url.pathname.match(/^\/api\/invoices\/([A-Za-z0-9_-]{32})(?:\/(order|capture|refresh|cliq-claim|attempt))?$/);
         if(!match)return send(response,404,{error:'الطلب غير موجود.'});
         const [,token,action]=match;
         if(request.method==='GET'&&!action)return send(response,200,{invoice:service.view(service.find(token)),settings:publicSettings()});
@@ -26,10 +26,11 @@ function createCheckoutServer(service,config){
         const expected=config.checkout.publicUrl?new URL(config.checkout.publicUrl).origin:null;
         if(!request.headers.origin||request.headers.origin!==expected)return send(response,403,{error:'مصدر الطلب غير صالح.'});
         const input=await body(request);
-        if(action==='order')return send(response,200,await service.order(token));
+        if(action==='order')return send(response,200,await service.order(token,input.method));
         if(action==='capture')return send(response,200,await service.capture(token,input.orderId));
         if(action==='refresh')return send(response,200,{invoice:await service.refresh(token)});
-        if(action==='cliq-claim')return send(response,200,await service.claimCliq(token,input.reference));
+        if(action==='cliq-claim')return send(response,200,await service.claimCliq(token));
+        if(action==='attempt')return send(response,200,await service.recordAttempt(token,input));
       }
       if(request.method!=='GET'&&request.method!=='HEAD')return send(response,405,{error:'Method not allowed'});
       let file;

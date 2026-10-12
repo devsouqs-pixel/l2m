@@ -87,16 +87,15 @@ class App {
       if(['feedback','feedback-setup','giveaway','giveaway-end','poll','poll-end'].includes(n))return this.communityCommand(i);
       this.requireStaff(i);
       if(n==='invoice-confirm'){
-        await i.deferReply({ephemeral:true});const invoice=await this.invoices.confirmCliq({id:o.getString('invoice').trim().toUpperCase(),amount:o.getString('amount'),reference:o.getString('reference'),guildId:i.guildId,staffId:i.user.id});
-        return i.editReply({embeds:[embed(this.config,'تم اعتماد حوالة CliQ',`الفاتورة: **${invoice.id}**\nالطلب: **${invoice.name}**\nالمبلغ: **${(invoice.cliq.amountFils/1000).toFixed(3)} JOD**\nتم تحديث صفحة العميل وجدولة إشعار الدفع.`)],allowedMentions:{parse:[]}});
+        await i.deferReply({ephemeral:true});const action=o.getString('action'),invoice=await this.invoices.confirmCliq({id:o.getString('invoice').trim().toUpperCase(),action,guildId:i.guildId,staffId:i.user.id});
+        return i.editReply({embeds:[embed(this.config,action==='confirm'?'✓ تم اعتماد حوالة CliQ':'× تم إلغاء الفاتورة',`الفاتورة: **${invoice.id}**\nالطلب: **${invoice.name}**\nالمبلغ: **${(invoice.cliq.amountFils/1000).toFixed(3)} JOD**\nتم تحديث صفحة الفاتورة وإضافة إشعار الإدارة ورسالة العميل للإرسال.`).setColor(action==='confirm'?this.config.brand.color:'#F26B7C')],allowedMentions:{parse:[]}});
       }
       if(n==='invoice'){
         await i.deferReply();
-        const customer=o.getUser('user');if(customer)await this.member(i,customer.id);
+        const customer=o.getUser('user');if(!customer)throw new Error('حدد العميل في خيار user حتى تصله تحديثات الفاتورة.');await this.member(i,customer.id);
         const invoice=this.invoices.create({amount:o.getString('amount'),name:o.getString('name'),customerId:customer?.id,createdBy:i.user.id,guildId:i.guildId,channelId:i.channelId});
         const money=cents=>`$${(cents/100).toFixed(2)}`;
         const e=embed(this.config,'فاتورة دفع • '+invoice.id,`**${invoice.name}**\n${customer?'فاتورة للعميل <@'+customer.id+'>\n':''}اضغط «عرض الفاتورة والدفع» لإتمام طلبك.`).addFields({name:'قيمة الطلب',value:money(invoice.baseCents),inline:true},{name:this.config.checkout.fee.label,value:money(invoice.feeCents),inline:true},{name:'الإجمالي المستحق',value:money(invoice.totalCents),inline:true},{name:'صلاحية الرابط',value:`<t:${Math.floor(invoice.expiresAt/1000)}:R>`}).setFooter({text:this.config.brand.name+' • Secure checkout'});
-        if(invoice.cliq)e.addFields({name:'CliQ · بدون رسوم خدمة',value:(invoice.cliq.amountFils/1000).toFixed(3)+' JOD · للحسابات والمحافظ داخل الأردن · تأكيد يدوي بعد وصول الحوالة'});
         const {ButtonBuilder,ButtonStyle}=require('discord.js');
         const link=new ButtonBuilder().setLabel('عرض الفاتورة والدفع').setStyle(ButtonStyle.Link).setURL(this.config.checkout.publicUrl+'/invoice/'+invoice.token);
         const message=await i.editReply({embeds:[e],components:[row(link)],allowedMentions:{parse:[]}});invoice.discordMessageId=message.id;this.store.save();return;
