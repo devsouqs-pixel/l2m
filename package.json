@@ -1,0 +1,15 @@
+{
+  "name": "l2m-discord-control-center",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "discord.js": "14.19.3",
+    "dotenv": "16.5.0"
+  },
+  "overrides": { "undici": "6.29.0" },
+  "engines": { "node": ">=22.12.0" }
+}

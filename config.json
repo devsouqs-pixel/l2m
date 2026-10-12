@@ -1,0 +1,35 @@
+{
+  "brand": {
+    "name": "L2M Studios",
+    "color": "#00E6A8",
+    "logoUrl": "",
+    "slogan": "Crafted Beyond Code"
+  },
+  "staffRoleIds": [],
+  "feedbackChannelId": "",
+  "assignableRoleIds": [],
+  "feedbackCooldownMinutes": 60,
+  "feedbackDeleteDelaySeconds": 5,
+  "broadcastDelayMs": 3000,
+  "broadcastMaxRecipients": 10000,
+  "checkout": {
+    "publicUrl": "",
+    "port": 3000,
+    "currency": "USD",
+    "cliq": {
+      "enabled": true,
+      "phone": "0781882254",
+      "bank": "البنك العربي",
+      "beneficiaryName": "",
+      "usdToJod": 0.709
+    },
+    "storeUrl": "https://discord.gg/SJ6vDZWWf6",
+    "logoPath": "/assets/logo.png",
+    "invoiceLifetimeHours": 72,
+    "maximumAmount": 10000,
+    "fee": { "enabled": true, "percentage": 4.4, "fixed": 0.30, "calculation": "gross-up", "label": "رسوم الخدمة" },
+    "paypal": { "mode": "live", "clientId": "", "secret": "", "merchantId": "", "webhookId": "", "applePay": true, "advancedCards": false },
+    "discordWebhookUrl": "",
+    "preview": false
+  }
+}

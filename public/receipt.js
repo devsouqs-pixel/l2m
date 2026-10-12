@@ -1,0 +1,30 @@
+function pdfFromCanvas(canvas,title){
+  const jpeg=Uint8Array.from(atob(canvas.toDataURL('image/jpeg',.96).split(',')[1]),character=>character.charCodeAt(0)),encode=value=>new TextEncoder().encode(value),parts=[],offsets=[0];let length=0;
+  const add=value=>{const bytes=typeof value==='string'?encode(value):value;parts.push(bytes);length+=bytes.length;};
+  const object=(id,body)=>{offsets[id]=length;add(id+' 0 obj\n'+body+'\nendobj\n');};
+  add('%PDF-1.4\n%L2M\n');object(1,'<< /Type /Catalog /Pages 2 0 R >>');object(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');object(3,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /XObject << /Receipt 4 0 R >> >> /Contents 5 0 R >>');
+  offsets[4]=length;add('4 0 obj\n<< /Type /XObject /Subtype /Image /Width '+canvas.width+' /Height '+canvas.height+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+jpeg.length+' >>\nstream\n');add(jpeg);add('\nendstream\nendobj\n');const content='q\n595.28 0 0 841.89 0 0 cm\n/Receipt Do\nQ\n';object(5,'<< /Length '+encode(content).length+' >>\nstream\n'+content+'endstream');object(6,'<< /Title ('+title.replace(/[^a-zA-Z0-9 _-]/g,'')+') /Creator (L2M Studios) >>');const xref=length;add('xref\n0 7\n0000000000 65535 f \n');for(let id=1;id<=6;id++)add(String(offsets[id]).padStart(10,'0')+' 00000 n \n');add('trailer\n<< /Size 7 /Root 1 0 R /Info 6 0 R >>\nstartxref\n'+xref+'\n%%EOF');return new Blob(parts,{type:'application/pdf'});
+}
+async function image(src){const img=new Image();img.src=src;await img.decode();return img;}
+export async function downloadReceipt(invoice,settings,{demo=false}={}){
+  if(!demo&&invoice.status!=='PAID')throw new Error('تحميل الإيصال متاح بعد تأكيد الدفع فقط.');
+  await document.fonts.ready;const canvas=document.createElement('canvas');canvas.width=1240;canvas.height=1754;const c=canvas.getContext('2d'),accent=/^#[0-9a-f]{6}$/i.test(settings.brand.color)?settings.brand.color:'#00e6a8',cliq=invoice.paymentMethod==='CLIQ',total=cliq?(invoice.cliq.amountFils/1000).toFixed(3)+' JOD':(invoice.totalCents/100).toFixed(2)+' USD';
+  function text(value,x,y,size=26,color='#172724',align='right',weight=500){c.font=`${weight} ${size}px Manrope, Noto, sans-serif`;c.fillStyle=color;c.textAlign=align;c.textBaseline='middle';c.fillText(String(value),x,y);}
+  function line(y){c.strokeStyle='#e1e8e4';c.lineWidth=2;c.beginPath();c.moveTo(90,y);c.lineTo(1150,y);c.stroke();}
+  function wrap(value,x,y,width,size=26,color='#172724',align='right',max=3){c.font=`500 ${size}px Manrope, Noto, sans-serif`;let current='',lines=[];for(const character of String(value)){const next=current+character;if(c.measureText(next).width>width&&current){const gap=current.lastIndexOf(' ');if(gap>current.length*.5){lines.push(current.slice(0,gap));current=current.slice(gap+1)+character;}else{lines.push(current);current=character;}}else current=next;}if(current)lines.push(current);lines.slice(0,max).forEach((row,index)=>text(row,x,y+index*(size+17),size,color,align));return Math.min(lines.length,max)*(size+17);}
+  c.fillStyle='#f7f9f7';c.fillRect(0,0,1240,1754);c.fillStyle='#0c1518';c.fillRect(0,0,1240,330);c.fillStyle=accent;c.fillRect(0,0,1240,8);
+  try{const logo=await image(settings.brand.logo);c.drawImage(logo,100,70,126,120);}catch{}
+  text(settings.brand.name,265,119,44,'#ffffff','left',700);text('PAYMENT RECEIPT',265,175,18,'#97adb0','left',600);text('إيصال دفع',1140,118,43,'#ffffff','right',600);text(demo?'نسخة معاينة · ليست إثبات دفع':'تم تأكيد استلام دفعتك',1140,180,22,demo?'#ffd685':accent);text(invoice.id,1140,267,25,'#e8f5ef','right',600);
+  c.fillStyle='#ffffff';c.beginPath();c.roundRect(62,371,1116,1160,22);c.fill();text('تفاصيل الطلب',1115,431,29,'#172724','right',700);text('ORDER DETAILS',120,431,17,'#789087','left',600);line(477);
+  text('اسم الفاتورة / المنتج',1110,524,21,'#71877e');wrap(invoice.name,1110,577,970,34,'#182d25','right',3);
+  line(708);text('رقم الطلب والفاتورة',1110,758,23,'#71877e');text(invoice.id,120,758,28,'#1b342a','left',600);
+  const formatted=value=>new Intl.DateTimeFormat('ar-JO',{dateStyle:'long',timeStyle:'short',timeZone:'Asia/Amman'}).format(new Date(value));
+  text('تاريخ الإصدار',1110,824,23,'#71877e');text(formatted(invoice.createdAt),120,824,24,'#1b342a','left');text('تاريخ الدفع · بتوقيت الأردن',1110,890,23,'#71877e');text(formatted(invoice.paidAt||Date.now()),120,890,24,'#1b342a','left');
+  text('وسيلة الدفع',1110,956,23,'#71877e');text(cliq?'CliQ · '+invoice.cliq.bank:'PayPal · دفع إلكتروني',120,956,26,'#1b342a','left',600);
+  text('مرجع العملية',1110,1022,23,'#71877e');wrap(invoice.paymentReference||invoice.captureId||(demo?'DEMO-TRANSACTION':'—'),120,1022,740,23,'#1b342a','left',2);
+  line(1102);text('قيمة الطلب الأساسية',1110,1158,25,'#536b61');text((invoice.baseCents/100).toFixed(2)+' USD',120,1158,29,'#1b342a','left',600);text(invoice.feeLabel||'رسوم الخدمة',1110,1227,25,'#536b61');text(cliq?'0.000 JOD':(invoice.feeCents/100).toFixed(2)+' USD',120,1227,29,'#1b342a','left',600);
+  if(cliq){text('سعر التحويل المعتمد لهذه الفاتورة',1110,1295,21,'#71877e');text('1 USD = '+Number(invoice.cliq.rate).toFixed(3)+' JOD',120,1295,24,'#1b342a','left');}
+  c.fillStyle='#0d2a23';c.beginPath();c.roundRect(101,1354,1038,128,14);c.fill();text('الإجمالي المدفوع',1098,1417,29,'#d9efe5');text(total,145,1417,47,accent,'left',700);
+  text('شكرًا لثقتك في '+settings.brand.name,620,1600,30,'#294b3d','center',600);text('احتفظ بالإيصال ورقم الطلب عند التواصل مع المتجر.',620,1651,23,'#768c81','center');text(demo?'PREVIEW ONLY · NO PAYMENT WAS PROCESSED':'VERIFIED PAYMENT · '+invoice.id,620,1710,16,demo?'#a47734':'#7c9387','center',600);
+  const blob=pdfFromCanvas(canvas,'l2m-'+invoice.id),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='l2m-'+invoice.id+'.pdf';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);return blob;
+}

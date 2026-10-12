@@ -1,0 +1,6 @@
+const path=require('node:path');
+require('dotenv').config({path:path.resolve(__dirname,'..','.env')});
+const raw=require('../config.json');
+if(!/^#[0-9a-f]{6}$/i.test(raw.brand.color)) throw new Error('Invalid brand.color');
+const checkout={...raw.checkout,publicUrl:(process.env.PUBLIC_URL||raw.checkout.publicUrl||'').replace(/\/$/,''),port:Number(process.env.PORT||raw.checkout.port||3000),preview:process.env.CHECKOUT_PREVIEW==='1',discordWebhookUrl:process.env.PAYMENT_DISCORD_WEBHOOK_URL||raw.checkout.discordWebhookUrl||'',paypal:{...raw.checkout.paypal,mode:process.env.PAYPAL_MODE||raw.checkout.paypal.mode,clientId:process.env.PAYPAL_CLIENT_ID||raw.checkout.paypal.clientId,secret:process.env.PAYPAL_SECRET||raw.checkout.paypal.secret,merchantId:process.env.PAYPAL_MERCHANT_ID||raw.checkout.paypal.merchantId,webhookId:process.env.PAYPAL_WEBHOOK_ID||raw.checkout.paypal.webhookId}};
+module.exports={...raw,checkout,root:path.resolve(__dirname,'..'),dataDir:path.resolve(__dirname,'..',process.env.DATA_DIR||process.env.RAILWAY_VOLUME_MOUNT_PATH||'data'),token:process.env.DISCORD_TOKEN,clientId:process.env.DISCORD_CLIENT_ID,guildId:process.env.DISCORD_GUILD_ID||'',webOnly:process.env.WEB_ONLY==='1'};

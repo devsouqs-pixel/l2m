@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b0e11">
+  <title>فاتورة | Checkout</title>
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="stylesheet" href="/checkout.css">
+  <script src="/checkout.js" defer></script>
+</head>
+<body>
+  <div class="intro" id="intro" aria-hidden="true"><div class="intro-orbit"></div><img class="brand-logo intro-logo" alt=""><div class="intro-name brand-name"></div><div class="intro-caption">A BETTER WAY TO CHECK OUT</div><div class="intro-line"><i></i></div></div>
+  <div class="ambient" aria-hidden="true"><div class="ambient-grid"></div><div class="ambient-glow"></div></div>
+  <div class="page-wrap">
+    <header class="topbar"><a class="store-link identity" href="#"><img class="brand-logo" alt="شعار المتجر"><span><b class="brand-name"></b><small>PAYMENT EXPERIENCE</small></span></a><div class="header-right"><span class="secure-dot"></span><span>دفع آمن ومشفّر</span><span class="header-divider"></span><span class="currency-code">USD</span></div></header>
+    <main id="checkout" class="checkout">
+      <div class="page-heading"><div class="eyebrow"><span class="tiny-square"></span> THE FINAL STEP</div><h1>خطوة أخيرة.<br><span>والباقي علينا.</span></h1><p>فاتورتك جاهزة. اختر طريقة الدفع المناسبة لك.</p></div>
+      <div class="checkout-grid">
+        <section class="summary-panel" aria-labelledby="summary-title">
+          <div class="panel-eyebrow"><span>ORDER OVERVIEW</span><span class="pill" id="invoice-status">بانتظار الدفع</span></div>
+          <div class="product-line"><div class="product-icon"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4 7.5 8 4.6 8-4.6M12 12v9M8 5.3l8 4.5"/></svg></div><div><h2 id="summary-title">جاري تحميل الفاتورة</h2><span id="invoice-id" dir="ltr">—</span></div></div>
+          <div class="amount-hero"><div class="amount-label">المبلغ المستحق <span>TOTAL DUE</span></div><div class="amount-value" dir="ltr"><span class="dollar">$</span><strong id="total">—</strong><span class="amount-currency">USD</span></div><div class="amount-caption"><span class="tiny-square"></span> دفعة واحدة · التفاصيل موضحة أدناه</div></div>
+          <div class="breakdown"><div><span>قيمة الطلب</span><b id="subtotal" dir="ltr">—</b></div><div><span id="fee-label">رسوم الخدمة</span><b id="fee" dir="ltr">—</b></div><div class="breakdown-total"><span>الإجمالي النهائي</span><b id="total-small" dir="ltr">—</b></div></div>
+          <div class="invoice-meta"><div><span>تاريخ الإصدار</span><b id="created-date">—</b></div><div><span>صلاحية الفاتورة</span><b id="expiry-date">—</b></div></div>
+          <div class="summary-footer"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Z"/><path d="m8 12 3 3 5-6"/></svg><span>فاتورة خاصة · تأكيد تلقائي بعد إتمام الدفع</span></div>
+        </section>
+        <section class="payment-panel" aria-labelledby="payment-title">
+          <div class="panel-eyebrow"><span>CHOOSE YOUR WAY</span><span class="step-count">02 / 02</span></div>
+          <h2 id="payment-title">كيف بتحب تدفع؟</h2><p class="payment-subtitle">اختر وسيلتك، وكمّل طلبك بأمان.</p>
+          <div class="methods" role="group" aria-label="طريقة الدفع">
+            <button class="method selected" data-method="paypal" aria-pressed="true"><span class="method-symbol official-paypal"><img src="/assets/paypal.png" alt="PayPal"></span><span class="method-copy"><b>PayPal</b><small>ادفع باستخدام حسابك</small></span><span class="recommended">موصى به</span><span class="radio"><i></i></span></button>
+            <button class="method" data-method="apple" aria-pressed="false" disabled><span class="method-symbol apple-mark"><svg viewBox="0 0 24 27" aria-hidden="true"><path d="M18.9 14.3c0-3.1 2.5-4.6 2.6-4.7-1.4-2.1-3.7-2.4-4.4-2.4-1.9-.2-3.8 1.1-4.8 1.1s-2.5-1.1-4.1-1c-2.1 0-4.1 1.3-5.2 3.2-2.2 3.8-.6 9.5 1.5 12.5 1 1.5 2.2 3.1 3.8 3 1.5-.1 2.1-1 4-1s2.5 1 4.1 1c1.7 0 2.7-1.5 3.7-3 1.2-1.7 1.7-3.4 1.7-3.5-.1 0-2.9-1.1-2.9-5.2ZM15.8 5.2c.8-1 1.4-2.4 1.2-3.8-1.2.1-2.7.9-3.5 1.9-.8.8-1.5 2.3-1.3 3.6 1.3.1 2.7-.7 3.6-1.7Z"/></svg></span><span class="method-copy"><b dir="ltr">Apple Pay</b><small id="apple-description">يتم التحقق من التوفر</small></span><span class="radio"><i></i></span></button>
+            <button class="method" data-method="card" aria-pressed="false" disabled><span class="method-symbol card-mark"><svg viewBox="0 0 28 22" fill="none" aria-hidden="true"><rect x="1" y="1" width="26" height="20" rx="4"/><path d="M1 7h26M5 16h6"/></svg></span><span class="method-copy"><b>بطاقة بنكية</b><small id="card-description">Visa / Mastercard</small></span><span class="card-brands" dir="ltr"><b>VISA</b><i></i></span><span class="radio"><i></i></span></button>
+          </div>
+          <div class="payment-action" id="payment-action"><div id="paypal-buttons"></div><div id="card-buttons" hidden></div><div id="card-fields" hidden><div id="card-name"></div><div id="card-number"></div><div class="card-fields-row"><div id="card-expiry"></div><div id="card-cvv"></div></div><button class="pay-button" id="submit-card">إتمام الدفع</button></div><button class="pay-button" id="apple-button" hidden><span>الدفع باستخدام Apple Pay</span><span>←</span></button><button class="pay-button" id="demo-pay" hidden><span>إتمام الدفع التجريبي</span><span dir="ltr" id="demo-total">$10.77 ↗</span></button><div class="loading-payment" id="loading-payment"><span class="spinner"></span> جاري تجهيز الدفع الآمن</div></div>
+          <button class="method cliq-method" data-method="cliq" aria-pressed="false" hidden><span class="method-symbol official-cliq"><img src="/assets/cliq.png" alt="CliQ"></span><span class="method-copy"><b>CliQ · كليك</b><small>تحويل أردني · بدون رسوم خدمة</small></span><span class="radio"><i></i></span></button>
+          <section id="cliq-panel" class="cliq-panel" hidden aria-label="التحويل عبر CliQ"><div class="cliq-notice"><b>متاح للحسابات والمحافظ داخل الأردن فقط</b><span>حوّل المبلغ التالي عبر CliQ من تطبيق بنكك. لا توجد رسوم خدمة من المتجر على هذه الطريقة.</span></div><div class="cliq-amount"><strong id="cliq-amount" dir="ltr"></strong><span>المبلغ المطلوب بالدينار الأردني</span></div><dl><div><dt>البنك</dt><dd id="cliq-bank"></dd></div><div><dt>رقم الهاتف المسجّل في CliQ</dt><dd><b id="cliq-phone" dir="ltr"></b><button type="button" id="copy-cliq">نسخ</button></dd></div><div id="beneficiary-row" hidden><dt>المستفيد</dt><dd id="cliq-beneficiary"></dd></div><div><dt>ملاحظة الحوالة</dt><dd id="cliq-note" dir="ltr"></dd></div></dl><p>تحقّق من اسم المستفيد داخل تطبيق البنك قبل التأكيد، وأضف رقم الفاتورة في ملاحظة الحوالة إذا كان متاحًا.</p><form id="cliq-form"><label for="cliq-reference">رقم مرجع الحوالة بعد التحويل</label><input id="cliq-reference" name="reference" required minlength="3" maxlength="80" autocomplete="off" placeholder="تجده في تفاصيل الحوالة داخل تطبيق البنك"><button type="submit" class="pay-button" id="cliq-submit">حوّلت المبلغ · إرسال للمراجعة <span>←</span></button></form><small>إرسال المرجع لا يؤكد الدفع. يتم الاعتماد بعد مراجعة وصول الحوالة فعليًا إلى البنك.</small></section>
+          <p class="payment-error" id="payment-error" role="alert" hidden></p>
+          <div class="payment-trust"><span><svg viewBox="0 0 20 20" fill="none"><rect x="4" y="8" width="12" height="9" rx="2"/><path d="M6 8V6a4 4 0 0 1 8 0v2"/></svg> معالجة آمنة عبر PayPal</span><span>بيانات بطاقتك تبقى خاصة</span></div>
+          <div class="help-box"><div><b>محتاج مساعدة؟</b><span>فريق المتجر جاهز لمساعدتك بإتمام طلبك.</span></div><a class="store-link" href="#">تواصل معنا <span>↗</span></a></div>
+        </section>
+      </div>
+      <div class="bottom-line"><span>GOOD THINGS START HERE.</span><span>مدفوعات أبسط. تجربة أفضل.</span></div>
+    </main>
+    <div class="empty-state" id="empty-state" hidden><span class="empty-icon">↗</span><h1>كل طلب إله رابط خاص.</h1><p id="empty-message">افتح رابط الفاتورة المرسل إليك داخل الديسكورد.</p><a class="pay-button store-link" href="#">العودة إلى المتجر</a></div>
+    <footer class="page-footer"><span>© <span id="year"></span> <span class="brand-name"></span></span><a class="store-link" href="#">العودة إلى المتجر <span>↗</span></a><span class="footer-powered">Powered by <b dir="ltr">PayPal</b></span></footer>
+  </div>
+  <div class="preview-tools" id="preview-tools" hidden><span>معاينة فقط · بدون دفعات حقيقية</span><button id="demo-success">نجاح</button><button id="demo-cancel">إلغاء</button><button id="demo-pending">انتظار</button><button id="replay-intro">الافتتاحية ↻</button></div>
+  <section class="terminal-scene" id="terminal-scene" role="dialog" aria-modal="true" aria-labelledby="result-title" hidden>
+    <div class="scene-grid" aria-hidden="true"></div><div class="scene-halo"></div><span class="scene-eyebrow">A LITTLE MOMENT. A GREAT EXPERIENCE.</span>
+    <div class="terminal-stage" id="terminal-stage"><div id="terminal-webgl" class="terminal-webgl" aria-hidden="true"></div>
+      <div class="tap-waves"><i></i><i></i><i></i></div>
+      <div class="floating-card" aria-hidden="true"><div class="card-shine"></div><span class="card-brand brand-name"></span><div class="card-chip"><i></i></div><svg class="contactless" viewBox="0 0 24 24" fill="none"><path d="M8 8a7 7 0 0 1 0 8M12 5a12 12 0 0 1 0 14M16 2a17 17 0 0 1 0 20"/></svg><span class="card-digits" dir="ltr">•••• &nbsp; •••• &nbsp; •••• &nbsp; 2048</span><span class="card-visa">VISA</span><span class="card-bottom">SECURE PAYMENT</span></div>
+      <div class="terminal-model">
+        <div class="receipt-well"><div class="paper-receipt" id="paper-receipt"><span class="receipt-store brand-name"></span><span class="receipt-caption">PAYMENT RECEIPT</span><div class="receipt-rule"></div><b id="receipt-result">تم الدفع بنجاح</b><span id="receipt-name"></span><div class="receipt-row"><span>رقم الفاتورة</span><b id="receipt-id" dir="ltr"></b></div><div class="receipt-row"><span>التاريخ</span><b id="receipt-date"></b></div><div class="receipt-rule"></div><div class="receipt-row receipt-amount"><span>الإجمالي</span><b id="receipt-total" dir="ltr"></b></div><div class="receipt-barcode"></div><span class="receipt-thanks" id="receipt-thanks">شكرًا لثقتك فينا ♡</span></div></div>
+        <div class="device-back"></div><div class="device-body"><div class="printer-lip"><i></i></div><div class="device-brand"><span class="device-led"></span><span class="brand-name"></span><svg viewBox="0 0 24 24" fill="none"><path d="M8 8a7 7 0 0 1 0 8M12 5a12 12 0 0 1 0 14M16 2a17 17 0 0 1 0 20"/></svg></div><div class="device-screen"><div class="screen-top"><span>SECURE CONNECTION</span><span>▰ ▰ ▰</span></div><div class="screen-process"><span class="terminal-spinner"></span><b>جاري التأكيد</b><small>لحظات ونكمّل</small></div><div class="screen-result"><div class="screen-result-icon"><svg class="check-icon" viewBox="0 0 56 56" fill="none"><path d="m13 29 10 10 21-23"/></svg><svg class="cross-icon" viewBox="0 0 56 56" fill="none"><path d="m17 17 22 22m0-22L17 39"/></svg><span class="pending-icon">⋯</span></div><b id="screen-result-label">APPROVED</b><strong id="screen-amount" dir="ltr">$10.77</strong><small id="screen-ref">TRANSACTION COMPLETE</small></div><div class="screen-bottom"><span>● SSL</span><span>PAYMENT TERMINAL</span></div></div><div class="device-keypad"><span>1</span><span>2 <small>ABC</small></span><span>3 <small>DEF</small></span><span>4 <small>GHI</small></span><span>5 <small>JKL</small></span><span>6 <small>MNO</small></span><span>7 <small>PQRS</small></span><span>8 <small>TUV</small></span><span>9 <small>WXYZ</small></span><span class="key-cancel">×</span><span>0</span><span class="key-enter">↵</span></div><div class="device-bottom"><span>CONTACTLESS</span><div></div><span>◉</span></div></div>
+      </div>
+      <div class="terminal-shadow"></div><div class="scene-particles"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="result-copy" id="result-copy" aria-live="polite"><span class="result-kicker" id="result-kicker">PAYMENT CONFIRMED</span><h2 id="result-title">وصلت. ومبروك طلبك!</h2><p id="result-description">تم دفع الفاتورة بنجاح، ووصل التأكيد للمتجر.</p><div class="result-actions"><a class="pay-button store-link" href="#">العودة إلى المتجر <span>↗</span></a><button class="secondary-button" id="retry-button" hidden>العودة للفاتورة ↻</button><button class="secondary-button" id="print-button">تحميل الإيصال ↓</button></div><span class="result-reference" id="result-reference"></span><small id="receipt-download-status" role="status"></small></div>
+  </section>
+</body>
+</html>
