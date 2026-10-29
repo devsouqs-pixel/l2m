@@ -1,14 +1,14 @@
 {
   "brand": {
     "name": "L2M Studios",
-    "color": "#00E6A8",
+    "color": "#C0C0C0",
     "logoUrl": "",
     "slogan": "Crafted Beyond Code"
   },
-  "staffRoleIds": [],
-  "feedbackChannelId": "",
-  "assignableRoleIds": [],
-  "feedbackCooldownMinutes": 60,
+  "staffRoleIds": [1282481808709128223],
+  "feedbackChannelId": "1282484321516519515",
+  "assignableRoleIds": [1282481808709128223],
+  "feedbackCooldownMinutes": 1,
   "feedbackDeleteDelaySeconds": 5,
   "broadcastDelayMs": 3000,
   "broadcastMaxRecipients": 10000,
