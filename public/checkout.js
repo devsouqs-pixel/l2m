@@ -1,15 +1,16 @@
 const $=id=>document.getElementById(id);
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 let reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+try{const preference=localStorage.getItem('l2m-motion');if(preference==='on'||preference==='off')reduced=preference==='off';}catch{}
 const token=location.pathname.match(/^\/invoice\/([A-Za-z0-9_-]{32})$/)?.[1];
 const demo=Boolean(window.L2M_PREVIEW);
 let invoice,settings,selected='paypal',sceneStarted=0,sceneVersion=0,sceneBusy=false,sdkReady=false,pendingTimer;
-let terminalPromise,terminal3d,receiptBusy=false,downloadTimer;
+let terminalPromise,terminal3d,receiptBusy=false,downloadTimer,providerAttemptActive=false,providerMethod=null;
 let attemptId=crypto.randomUUID();
-const paymentMethod=()=>({paypal:'PAYPAL',card:'CARD',apple:'APPLE_PAY',cliq:'CLIQ'}[selected]||'PAYPAL');
+const paymentMethod=()=>providerAttemptActive&&providerMethod?providerMethod:({paypal:'PAYPAL',card:'CARD',apple:'APPLE_PAY',cliq:'CLIQ'}[selected]||'PAYPAL');
 function prepareTerminal(){return terminalPromise||=(import('/terminal-3d.js?v='+encodeURIComponent(settings.assetVersion||'')).then(module=>module.createTerminal($('terminal-webgl'),{brand:settings.brand,reduced})).then(terminal=>{terminal3d=terminal;$('terminal-stage').classList.add('webgl-ready');return terminal;}).catch(()=>null));}
 const money=cents=>'$'+(cents/100).toFixed(2);
-const isCliq=()=>Boolean(invoice.cliq&&(selected==='cliq'||invoice.paymentMethod==='CLIQ'||['CLIQ_REVIEW','CANCELLED'].includes(invoice.status)));
+const isCliq=()=>Boolean(invoice.cliq&&(selected==='cliq'||invoice.paymentMethod==='CLIQ'||invoice.status==='CLIQ_REVIEW'));
 const paidAmount=()=>isCliq()?(invoice.cliq.amountFils/1000).toFixed(3)+' JOD':money(invoice.totalCents);
 const date=value=>new Intl.DateTimeFormat('ar-JO',{day:'numeric',month:'short',year:'numeric'}).format(new Date(value));
 function error(message){$('payment-error').textContent=message;$('payment-error').hidden=false;}
@@ -25,7 +26,7 @@ function paintInvoiceData(){
   $('summary-title').textContent=invoice.name;$('invoice-id').textContent=invoice.id;$('total').textContent=(invoice.totalCents/100).toFixed(2);$('total-small').textContent=money(invoice.totalCents);$('subtotal').textContent=money(invoice.baseCents);$('fee').textContent=money(invoice.feeCents);$('fee-label').textContent=invoice.feeLabel;$('created-date').textContent=date(invoice.createdAt);$('expiry-date').textContent=date(invoice.expiresAt);$('demo-total').textContent=money(invoice.totalCents)+' ↗';
   const labels={UNPAID:'بانتظار الدفع',PAID:'تم الدفع',PENDING:'قيد التأكيد',CLIQ_REVIEW:'الحوالة قيد المراجعة',CANCELLED:'تم إلغاء الفاتورة',REFUNDED:'تم الاسترداد',PARTIALLY_REFUNDED:'استرداد جزئي',REVERSED:'دفعة معكوسة'};$('invoice-status').textContent=invoice.expired?'انتهت الصلاحية':labels[invoice.status]||'بانتظار الدفع';
   document.querySelector('.dollar').textContent=isCliq()?'': '$';document.querySelector('.amount-currency').textContent=isCliq()?'JOD':'USD';
-  if(isCliq()){$('total').textContent=(invoice.cliq.amountFils/1000).toFixed(3);$('total-small').textContent=paidAmount();$('fee').textContent='0.000 JOD';}
+  if(isCliq()){$('total').textContent=(invoice.cliq.amountFils/1000).toFixed(3);$('total-small').textContent=paidAmount();$('subtotal').textContent=paidAmount();$('fee').textContent='0.000 JOD';}
 }
 let amountFrame=0;
 function paintInvoice(){
@@ -49,20 +50,23 @@ function choose(method){
   if(demo)return;
   $('paypal-buttons').hidden=method!=='paypal';$('card-buttons').hidden=method!=='card'||settings.paypal.advancedCardsActive;$('card-fields').hidden=method!=='card'||!settings.paypal.advancedCardsActive;$('apple-button').hidden=method!=='apple';
 }
+function closeScene(){
+  sceneVersion++;clearTimeout(downloadTimer);clearInterval(pendingTimer);terminal3d?.stop();$('terminal-scene').hidden=true;document.body.style.overflow='';document.body.classList.remove('scene-open');document.querySelector('.page-wrap').inert=false;sceneBusy=false;
+}
 function beginScene(){
   sceneVersion++;clearInterval(pendingTimer);clearTimeout(downloadTimer);sceneStarted=Date.now();sceneBusy=true;const scene=$('terminal-scene');scene.hidden=true;scene.className='terminal-scene';void scene.offsetWidth;scene.hidden=false;
   const version=sceneVersion;prepareTerminal().then(terminal=>{if(version===sceneVersion)terminal?.start({...invoice,...(isCliq()?{paymentMethod:'CLIQ'}:{})});});$('receipt-download-status').textContent='';
-  document.body.style.overflow='hidden';$('result-copy').setAttribute('aria-busy','true');$('result-title').textContent='جاري تأكيد عملية الدفع';$('result-description').textContent='لحظات حتى يصل تأكيد العملية.';$('print-button').hidden=true;$('retry-button').hidden=true;
+  document.body.style.overflow='hidden';document.body.classList.add('scene-open');document.querySelector('.page-wrap').inert=true;scene.scrollTop=0;$('result-copy').setAttribute('aria-busy','true');$('result-kicker').textContent='VERIFYING PAYMENT STATUS';$('result-title').textContent='جاري تأكيد عملية الدفع';$('result-description').textContent='لحظات حتى يصل تأكيد العملية.';$('print-button').hidden=true;$('retry-button').hidden=true;
   return sceneVersion;
 }
 async function settleScene(kind,description,version=sceneVersion){
   await pause(reduced?0:Math.max(0,2200-(Date.now()-sceneStarted)));if(version!==sceneVersion)return;
-  const success=kind==='success',pending=kind==='pending';
+  const success=kind==='success',pending=kind==='pending',cliqReview=pending&&(invoice.status==='CLIQ_REVIEW'||demo&&isCliq());
   const scene=$('terminal-scene');scene.classList.remove('success','pending','failure','settled');scene.classList.add(success?'success':pending?'pending':'failure','settled');
   prepareTerminal().then(terminal=>{if(version===sceneVersion)terminal?.finish(kind,{...invoice,...(isCliq()?{paymentMethod:'CLIQ'}:{})});});
   $('screen-result-label').textContent=success?'APPROVED':pending?'PROCESSING':kind==='cancel'?'CANCELLED':'NOT COMPLETED';$('screen-amount').textContent=money(invoice.totalCents);$('screen-ref').textContent=success?'TRANSACTION COMPLETE':pending?'AWAITING CONFIRMATION':'NO PAYMENT CONFIRMED';
-  $('result-kicker').textContent=success?'PAYMENT CONFIRMED':pending?'CONFIRMATION IN PROGRESS':kind==='cancel'?'PAYMENT CANCELLED':'PAYMENT NOT COMPLETED';
-  $('result-title').textContent=success?'دفعتك وصلت.':pending?'لحظة، ننتظر التأكيد.':invoice.status==='CANCELLED'?'تم إلغاء الفاتورة.':kind==='cancel'?'نكملها وقت ما تحب.':'ما اكتملت هالمرة.';
+  $('result-kicker').textContent=success?'PAYMENT CONFIRMED':pending?(cliqReview?'TRANSFER UNDER REVIEW':'CONFIRMATION IN PROGRESS'):kind==='cancel'?'PAYMENT CANCELLED':'PAYMENT NOT COMPLETED';
+  $('result-title').textContent=success?'دفعتك وصلت.':pending?(cliqReview?'حوالتك قيد المراجعة.':'لحظة، ننتظر التأكيد.'):invoice.status==='CANCELLED'?'تم إلغاء الفاتورة.':kind==='cancel'?'نكملها وقت ما تحب.':'ما اكتملت هالمرة.';
   $('result-description').textContent=description||(success?'تم دفع قيمة الطلب بنجاح. احتفظ بإيصالك للرجوع إليه.':pending?'لم يصل تأكيد نهائي بعد. سيتم تحديث الفاتورة بعد التأكد.':'لم يتم تأكيد دفع قيمة الطلب. تقدر ترجع للفاتورة وتحاول مرة ثانية.');
   $('receipt-result').textContent=success?'تم الدفع بنجاح':'لم يتم تأكيد الدفع';$('receipt-name').textContent=invoice.name;$('receipt-id').textContent=invoice.id;$('receipt-date').textContent=date(invoice.paidAt||Date.now());$('receipt-total').textContent=money(invoice.totalCents);$('receipt-thanks').textContent=success?'شكرًا لثقتك فينا ♡':'محاولة غير مكتملة · ليست فاتورة مدفوعة';$('result-reference').textContent=invoice.id+(demo?' · PREVIEW':invoice.paymentReference&&invoice.paymentReference!==invoice.id?' · '+invoice.paymentReference:invoice.captureId?' · '+invoice.captureId:'');
   $('print-button').hidden=!success;$('retry-button').hidden=success||invoice.status==='CANCELLED';$('retry-button').textContent=pending?'تحديث حالة الدفع ↻':'العودة للفاتورة ↻';$('result-copy').setAttribute('aria-busy','false');sceneBusy=false;$('retry-button').disabled=false;
@@ -105,27 +109,33 @@ async function setupPayments(){
   if(!settings.paypal.configured){$('loading-payment').hidden=true;document.querySelectorAll('.method:not([data-method="cliq"])').forEach(button=>button.disabled=true);if(invoice.cliq)return choose('cliq');return error('الدفع غير مفعّل حاليًا. تواصل مع المتجر.');}
   const query=new URLSearchParams({'client-id':settings.paypal.clientId,currency:invoice.currency,intent:'capture',components:'buttons,card-fields,applepay',commit:'true',locale:'en_US','enable-funding':'card'});
   await loadScript('https://www.paypal.com/sdk/js?'+query);sdkReady=true;
-  const callbacks={createOrder:async()=>{attemptId=crypto.randomUUID();const order=await api('order',{method:paymentMethod()});if(order.paid){invoice=order.invoice;paintInvoice();await outcome('success');throw new Error('Already paid');}return order.id;},onApprove:data=>capture(data.orderID),onCancel:()=>outcome('cancel'),onError:()=>outcome('failure','تعذر إكمال الدفع. راجع حالة العملية أو تواصل مع المتجر قبل إعادة المحاولة.')};
-  const buttons=paypal.Buttons({...callbacks,fundingSource:paypal.FUNDING.PAYPAL,style:{layout:'vertical',color:'gold',shape:'rect',label:'pay',height:49,tagline:false}});
+  const callbacks=method=>({
+    onClick:(data,actions)=>{if(invoice.status!=='UNPAID'||invoice.expired||selected==='cliq')return actions.reject();providerAttemptActive=true;providerMethod=method;return actions.resolve();},
+    createOrder:async()=>{providerAttemptActive=true;providerMethod=method;attemptId=crypto.randomUUID();const order=await api('order',{method});if(order.paid){invoice=order.invoice;paintInvoice();providerAttemptActive=false;await outcome('success');throw new Error('Already paid');}return order.id;},
+    onApprove:async data=>{selected=method==='CARD'?'card':'paypal';try{await capture(data.orderID);}finally{providerAttemptActive=false;providerMethod=null;}},
+    onCancel:async()=>{if(!providerAttemptActive||providerMethod!==method)return;selected=method==='CARD'?'card':'paypal';try{await outcome('cancel');}finally{providerAttemptActive=false;providerMethod=null;}},
+    onError:async()=>{if(!providerAttemptActive||providerMethod!==method){if(!providerAttemptActive&&selected!=='cliq')error('تعذر تجهيز PayPal حاليًا. حدّث الصفحة أو اختر وسيلة دفع أخرى.');return;}selected=method==='CARD'?'card':'paypal';try{await outcome('failure','تعذر إكمال الدفع. راجع حالة العملية أو تواصل مع المتجر قبل إعادة المحاولة.');}finally{providerAttemptActive=false;providerMethod=null;}}
+  });
+  const buttons=paypal.Buttons({...callbacks('PAYPAL'),fundingSource:paypal.FUNDING.PAYPAL,style:{layout:'vertical',color:'gold',shape:'rect',label:'pay',height:49,tagline:false}});
   if(buttons.isEligible())await buttons.render('#paypal-buttons');else error('الدفع عبر PayPal غير متاح حاليًا.');
   let cardsActive=false;
   if(settings.paypal.advancedCards&&paypal.CardFields){
-    const fields=paypal.CardFields({...callbacks,style:{input:{color:'#e5eef0','font-family':'sans-serif','font-size':'15px','padding':'12px'},'.invalid':{color:'#ff7386'}}});
+    const fields=paypal.CardFields({...callbacks('CARD'),style:{input:{color:'#e5eef0','font-family':'sans-serif','font-size':'15px','padding':'12px'},'.invalid':{color:'#ff7386'}}});
     if(fields.isEligible()){await Promise.all([fields.NameField().render('#card-name'),fields.NumberField().render('#card-number'),fields.ExpiryField().render('#card-expiry'),fields.CVVField().render('#card-cvv')]);settings.paypal.advancedCardsActive=true;cardsActive=true;$('submit-card').onclick=async()=>{try{attemptId=crypto.randomUUID();$('submit-card').disabled=true;await fields.submit();}catch{try{await reportAttempt('failure');}catch{}error('تحقق من بيانات البطاقة وحاول مجددًا.');}finally{$('submit-card').disabled=false;}};}
   }
-  if(!cardsActive){const cards=paypal.Buttons({...callbacks,fundingSource:paypal.FUNDING.CARD,style:{layout:'vertical',color:'black',shape:'rect',height:49,tagline:false}});if(cards.isEligible()){await cards.render('#card-buttons');cardsActive=true;$('card-description').textContent='عبر صفحة PayPal الآمنة';}}
+  if(!cardsActive){const cards=paypal.Buttons({...callbacks('CARD'),fundingSource:paypal.FUNDING.CARD,style:{layout:'vertical',color:'black',shape:'rect',height:49,tagline:false}});if(cards.isEligible()){await cards.render('#card-buttons');cardsActive=true;$('card-description').textContent='عبر صفحة PayPal الآمنة';}}
   document.querySelector('[data-method="card"]').disabled=!cardsActive;if(!cardsActive)$('card-description').textContent='غير متاح حاليًا';
   $('loading-payment').hidden=true;choose(selected);await setupApple();
 }
-document.querySelectorAll('.method').forEach(button=>button.addEventListener('click',()=>choose(button.dataset.method)));
+document.querySelectorAll('.method').forEach(button=>button.addEventListener('click',()=>{if(!invoice||providerAttemptActive||!demo&&(invoice.status!=='UNPAID'||invoice.expired))return;choose(button.dataset.method);}));
 function demoOutcome(kind){document.querySelectorAll('.preview-tools button').forEach(button=>button.classList.toggle('is-active',button.id==='demo-'+kind));return outcome(kind);}
 $('demo-success').onclick=()=>demoOutcome('success');$('demo-cancel').onclick=()=>demoOutcome('cancel');$('demo-pending').onclick=()=>demoOutcome('pending');
-$('replay-intro').onclick=async()=>{sceneVersion++;clearTimeout(downloadTimer);clearInterval(pendingTimer);terminal3d?.stop();$('terminal-scene').hidden=true;document.body.style.overflow='';document.body.classList.remove('ready');introPriceAnimated=false;const intro=$('intro');intro.classList.remove('done');intro.querySelectorAll('*').forEach(element=>element.getAnimations().forEach(animation=>{animation.cancel();animation.play();}));await pause(reduced?0:2100);finishIntro();};
-$('retry-button').onclick=async()=>{if(sceneBusy)return;$('retry-button').disabled=true;try{if(!demo){const result=await api('refresh');invoice=result.invoice;paintInvoice();if(invoice.status==='PAID')return outcome('success');if(['PENDING','CLIQ_REVIEW'].includes(invoice.status))return outcome('pending');if(invoice.status==='CANCELLED')return outcome('cancel','ألغت إدارة المتجر الفاتورة. تواصل معنا لمراجعة طلبك.');}sceneVersion++;clearInterval(pendingTimer);attemptId=crypto.randomUUID();terminal3d?.stop();$('terminal-scene').hidden=true;document.body.style.overflow='';document.querySelector('[data-method="'+selected+'"]').focus();}catch(problem){$('result-description').textContent=problem.message;}finally{$('retry-button').disabled=false;}};
+$('replay-intro').onclick=async()=>{closeScene();document.body.classList.remove('ready');introPriceAnimated=false;const intro=$('intro');intro.classList.remove('done');intro.querySelectorAll('*').forEach(element=>element.getAnimations().forEach(animation=>{animation.cancel();animation.play();}));await pause(reduced?0:2100);finishIntro();};
+$('retry-button').onclick=async()=>{if(sceneBusy)return;$('retry-button').disabled=true;try{if(!demo){const result=await api('refresh');invoice=result.invoice;paintInvoice();if(invoice.status==='PAID')return outcome('success');if(['PENDING','CLIQ_REVIEW'].includes(invoice.status))return outcome('pending');if(invoice.status==='CANCELLED')return outcome('cancel','ألغت إدارة المتجر الفاتورة. تواصل معنا لمراجعة طلبك.');}closeScene();attemptId=crypto.randomUUID();document.querySelector('[data-method="'+selected+'"]').focus();}catch(problem){$('result-description').textContent=problem.message;}finally{$('retry-button').disabled=false;}};
 async function saveReceipt(){if(receiptBusy)return;receiptBusy=true;$('print-button').disabled=true;try{if(!demo){const result=await api();invoice=result.invoice;if(invoice.status!=='PAID')throw new Error('الإيصال متاح بعد تأكيد الدفع فقط.');}const module=await import('/receipt.js?v='+encodeURIComponent(settings.assetVersion||''));await module.downloadReceipt({...invoice,...(demo&&selected==='cliq'?{paymentMethod:'CLIQ'}:{})},settings,{demo});$('receipt-download-status').textContent='تم تجهيز الإيصال. إذا لم يبدأ التنزيل اضغط تحميل الإيصال.';try{sessionStorage.setItem('receipt:'+invoice.id,'1');}catch{}}catch(problem){$('receipt-download-status').textContent=problem.message||'تعذر تحميل الإيصال. حاول مجددًا.';}finally{receiptBusy=false;$('print-button').disabled=false;}}
 $('print-button').onclick=saveReceipt;
 $('copy-cliq').onclick=async()=>{try{await navigator.clipboard.writeText(invoice.cliq.phone);$('copy-cliq').textContent='تم النسخ ✓';setTimeout(()=>$('copy-cliq').textContent='نسخ',2000);}catch{$('copy-cliq').textContent='انسخ الرقم يدويًا';}};
-$('cliq-form').onsubmit=async event=>{event.preventDefault();$('cliq-submit').disabled=true;try{if(demo)return await outcome('pending','معاينة فقط: تنتظر هذه الحوالة مراجعة البنك من إدارة المتجر.');const result=await api('cliq-claim');invoice=result.invoice;paintInvoice();await outcome(invoice.status==='PAID'?'success':'pending',invoice.status==='PAID'?undefined:'وصل طلبك للمتجر وهو بانتظار مراجعة البنك. ستتحدث الصفحة تلقائيًا بعد التأكيد أو الإلغاء. لا تحوّل مرة أخرى.');}catch(problem){error(problem.message);}finally{$('cliq-submit').disabled=false;}};
+$('cliq-form').onsubmit=async event=>{event.preventDefault();$('cliq-submit').disabled=true;try{if(demo)return await outcome('pending','معاينة فقط: تنتظر هذه الحوالة مراجعة البنك من إدارة المتجر.');const result=await api('cliq-claim');invoice=result.invoice;paintInvoice();await outcome(invoice.status==='PAID'?'success':invoice.status==='CANCELLED'?'cancel':['CLIQ_REVIEW','PENDING'].includes(invoice.status)?'pending':'failure',invoice.status==='PAID'?undefined:invoice.status==='CANCELLED'?'ألغت إدارة المتجر الفاتورة. تواصل معنا لمراجعة طلبك.':'وصل طلبك للمتجر وهو بانتظار مراجعة البنك. ستتحدث الصفحة تلقائيًا بعد التأكيد أو الإلغاء. لا تحوّل مرة أخرى.');}catch(problem){error(problem.message);}finally{$('cliq-submit').disabled=false;}};
 document.addEventListener('keydown',event=>{const scene=$('terminal-scene');if(scene.hidden||event.key!=='Tab')return;const focusable=[...scene.querySelectorAll('a[href],button:not([disabled])')].filter(element=>!element.hidden);const first=focusable[0],last=focusable.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}});
 async function start(){
   const beginning=Date.now();
@@ -134,7 +144,7 @@ async function start(){
     if(!demo&&!token){$('checkout').hidden=true;$('empty-state').hidden=false;return;}
     const data=demo?window.L2M_PREVIEW:await api();invoice=data.invoice;settings=data.settings;applyBrand();paintInvoice();
     const cliq=document.querySelector('[data-method="cliq"]');document.querySelector('.methods').append(cliq);cliq.hidden=!invoice.cliq;
-    if(invoice.cliq){$('cliq-amount').textContent=(invoice.cliq.amountFils/1000).toFixed(3)+' JOD';$('cliq-bank').textContent=invoice.cliq.bank;$('cliq-phone').textContent=invoice.cliq.phone;$('cliq-note').textContent=invoice.id;$('beneficiary-row').hidden=!invoice.cliq.beneficiaryName;$('cliq-beneficiary').textContent=invoice.cliq.beneficiaryName;$('cliq-beneficiary-hint').textContent=invoice.cliq.beneficiaryLastName||'FOUDEH';if(invoice.paymentMethod==='CLIQ'||['CLIQ_REVIEW','CANCELLED'].includes(invoice.status))choose('cliq');}
+    if(invoice.cliq){$('cliq-amount').textContent=(invoice.cliq.amountFils/1000).toFixed(3)+' JOD';$('cliq-bank').textContent=invoice.cliq.bank;$('cliq-phone').textContent=invoice.cliq.phone;$('cliq-note').textContent=invoice.id;$('beneficiary-row').hidden=!invoice.cliq.beneficiaryName;$('cliq-beneficiary').textContent=invoice.cliq.beneficiaryName;$('cliq-beneficiary-hint').textContent=invoice.cliq.beneficiaryLastName||'FOUDEH';if(invoice.paymentMethod==='CLIQ'||invoice.status==='CLIQ_REVIEW')choose('cliq');}
     if(!demo&&['UNPAID','PENDING'].includes(invoice.status)){try{const result=await api('refresh');invoice=result.invoice;paintInvoice();}catch{}}
     await pause(reduced?0:Math.max(0,1900-(Date.now()-beginning)));finishIntro();
     const params=new URLSearchParams(location.search);
@@ -145,14 +155,14 @@ async function start(){
 }
 start();
 function setupAtmosphere(){
-  const canvas=$('ambient-canvas'),context=canvas.getContext('2d'),toggle=$('motion-toggle'),fine=matchMedia('(pointer:fine)').matches;
+  const canvas=$('ambient-canvas'),context=canvas.getContext('2d'),toggles=[...document.querySelectorAll('[data-motion-toggle]')],fine=matchMedia('(pointer:fine)').matches;
   let paused=reduced,frame=0,last=0,width=innerWidth,height=innerHeight,dpr=Math.min(devicePixelRatio,1.5),points=[],mouse={x:width*.5,y:height*.35},onScreen=false;
   function resize(){width=innerWidth;height=innerHeight;dpr=Math.min(devicePixelRatio,1.5);canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);context.setTransform(dpr,0,0,dpr,0,0);points=Array.from({length:width<700?28:65},()=>({x:Math.random()*width,y:Math.random()*height,vx:(Math.random()-.5)*.12,vy:(Math.random()-.5)*.15,size:.4+Math.random()*1.3,alpha:.12+Math.random()*.4}));draw(0);}
   function draw(now){if(document.hidden)return;context.clearRect(0,0,width,height);const time=now*.0001;for(let i=0;i<points.length;i++){const p=points[i];if(!paused){p.x=(p.x+p.vx+width)%width;p.y=(p.y+p.vy+height)%height;}const dx=p.x-mouse.x,dy=p.y-mouse.y,near=onScreen?Math.max(0,1-Math.hypot(dx,dy)/220):0;context.fillStyle='rgba(199,209,234,'+(p.alpha*(.65+.2*Math.sin(time+i))+near*.2)+')';context.beginPath();context.arc(p.x,p.y,p.size+near*.7,0,Math.PI*2);context.fill();for(let j=i+1;j<Math.min(points.length,i+7);j++){const q=points[j],distance=Math.hypot(p.x-q.x,p.y-q.y);if(distance<135){context.strokeStyle='rgba(184,197,228,'+(.055*(1-distance/135)+near*.025)+')';context.lineWidth=.5;context.beginPath();context.moveTo(p.x,p.y);context.lineTo(q.x,q.y);context.stroke();}}}}
   function animate(now){if(paused||document.hidden){frame=0;return;}frame=requestAnimationFrame(animate);if(now-last<32)return;last=now;draw(now);}
   function run(){if(!frame&&!paused&&!document.hidden)frame=requestAnimationFrame(animate);}
-  function updateMotion(){reduced=paused;document.body.classList.toggle('motion-paused',paused);document.body.classList.toggle('motion-enabled',!paused);toggle.setAttribute('aria-pressed',String(paused));toggle.setAttribute('aria-label',paused?'تشغيل المؤثرات والحركة':'إيقاف المؤثرات والحركة');toggle.title=paused?'تشغيل الحركة':'إيقاف الحركة';terminal3d?.setMotion?.(paused);if(invoice)paintInvoice();if(paused){cancelAnimationFrame(frame);frame=0;draw(performance.now());}else run();}
-  toggle.onclick=()=>{paused=!paused;if(!paused&&invoice)$('total').dataset.displayValue='0';updateMotion();};window.addEventListener('resize',resize,{passive:true});document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelAnimationFrame(frame);frame=0;}else run();});
+  function updateMotion(){reduced=paused;document.body.classList.toggle('motion-paused',paused);document.body.classList.toggle('motion-enabled',!paused);toggles.forEach(toggle=>{toggle.setAttribute('aria-pressed',String(paused));toggle.setAttribute('aria-label',paused?'تشغيل المؤثرات والحركة':'إيقاف المؤثرات والحركة');toggle.title=paused?'تشغيل الحركة':'إيقاف الحركة';toggle.textContent=paused?'تشغيل الحركة':'إيقاف الحركة';});terminal3d?.setMotion?.(paused);if(invoice)paintInvoice();if(paused){cancelAnimationFrame(frame);frame=0;draw(performance.now());}else run();}
+  toggles.forEach(toggle=>{toggle.onclick=()=>{paused=!paused;try{localStorage.setItem('l2m-motion',paused?'off':'on');}catch{}if(!paused&&invoice)$('total').dataset.displayValue='0';updateMotion();};});window.addEventListener('resize',resize,{passive:true});document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelAnimationFrame(frame);frame=0;}else run();});
   if(fine){document.addEventListener('pointermove',event=>{mouse={x:event.clientX,y:event.clientY};onScreen=true;document.documentElement.style.setProperty('--mx',event.clientX+'px');document.documentElement.style.setProperty('--my',event.clientY+'px');const panel=event.target.closest?.('.glass-panel,.method');if(panel){const box=panel.getBoundingClientRect();panel.style.setProperty('--px',((event.clientX-box.left)/box.width*100)+'%');panel.style.setProperty('--py',((event.clientY-box.top)/box.height*100)+'%');}const art=document.querySelector('.hero-art'),box=art.getBoundingClientRect(),dx=(event.clientX-box.left-box.width/2)/innerWidth,dy=(event.clientY-box.top-box.height/2)/innerHeight;if(!paused){art.style.setProperty('--tx',(Math.max(-1,Math.min(1,dx))*12)+'deg');art.style.setProperty('--ty',(-Math.max(-1,Math.min(1,dy))*8)+'deg');}},{passive:true});document.addEventListener('pointerleave',()=>{onScreen=false;});}
   resize();updateMotion();
 }
